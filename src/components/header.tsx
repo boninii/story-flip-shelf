@@ -1,16 +1,11 @@
 import React from "react";
-
 import { Link, useLocation } from "react-router-dom";
-
-import { BookOpen, User, LogOut, Search } from "lucide-react";
-
+import { BookOpen, User, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/auth_context";
 
 const Header: React.FC = () => {
   const { is_authenticated, user, logout } = useAuth();
-
   const location = useLocation();
-
   const is_reader = location.pathname.startsWith("/reader");
 
   if (is_reader) return null;
@@ -20,34 +15,24 @@ const Header: React.FC = () => {
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <BookOpen className="h-7 w-7 text-primary" />
-
-          <span className="font-display text-xl font-bold text-foreground">
-            Livraria Nova
-          </span>
+          <span className="font-display text-xl font-bold text-foreground">Livraria Nova</span>
         </Link>
 
         <nav className="flex items-center gap-4">
-          <Link
-            to="/"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <Link to="/" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             Catálogo
           </Link>
 
           {is_authenticated ? (
             <>
-              <Link
-                to="/bookshelf"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
+              <Link to="/bookshelf" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                 Minha Estante
               </Link>
 
-              <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
+              <Link to="/profile" className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 transition-colors hover:bg-secondary/80">
                 <User className="h-4 w-4 text-primary" />
-
                 <span className="text-sm font-medium">{user?.name}</span>
-              </div>
+              </Link>
 
               <button
                 onClick={logout}
