@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, Mail, Phone, MapPin, Camera, Moon, Sun, PenTool, Send, BookOpen, Users, CheckCircle, XCircle, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { User, Mail, Phone, MapPin, Camera, Moon, Sun, PenTool, Send, BookOpen, Users, CheckCircle, XCircle, Clock, Search, ChevronLeft, ChevronRight, Power } from "lucide-react";
 import { useAuth } from "@/contexts/auth_context";
 import { useTheme } from "@/contexts/theme_context";
 import { CATEGORIES } from "@/data/types";
@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Navigate } from "react-router-dom";
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 8;
 
 const ProfilePage: React.FC = () => {
   const { user, update_profile, is_authenticated, author_requests, submit_author_request, book_submissions, submit_book, update_author_request, update_book_submission, all_users, toggle_user_active } = useAuth();
@@ -54,6 +54,17 @@ const ProfilePage: React.FC = () => {
   const [requests_filter, set_requests_filter] = useState<"all" | "pending">("pending");
 
   if (!is_authenticated || !user) return <Navigate to="/login" />;
+
+  const handle_avatar_file = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      set_avatar_url(result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const save_profile = () => {
     update_profile({ name, email, phone, address, avatar_url });
@@ -117,17 +128,35 @@ const ProfilePage: React.FC = () => {
     return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${map[status]}`}>{labels[status]}</span>;
   };
 
+  // Build tab list dynamically
+  const tabs: { value: string; label: string; icon: React.ReactNode }[] = [
+    { value: "profile", label: "Perfil", icon: <User className="h-4 w-4" /> },
+  ];
+  if (!is_author) {
+    tabs.push({ value: "author", label: "Ser Autor", icon: <PenTool className="h-4 w-4" /> });
+  }
+  if (is_author) {
+    tabs.push({ value: "submit_book", label: "Enviar Livro", icon: <Send className="h-4 w-4" /> });
+  }
+  if (is_admin) {
+    tabs.push({ value: "admin_requests", label: "Solicitações", icon: <PenTool className="h-4 w-4" /> });
+    tabs.push({ value: "admin_users", label: "Usuários", icon: <Users className="h-4 w-4" /> });
+    tabs.push({ value: "admin_books", label: "Livros", icon: <BookOpen className="h-4 w-4" /> });
+    tabs.push({ value: "admin_submissions", label: "Aprovações", icon: <CheckCircle className="h-4 w-4" /> });
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-8 max-w-4xl">
+      <div className="container py-8">
         <h1 className="text-3xl font-bold text-foreground mb-8">Minha Conta</h1>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="bg-secondary/50 p-1">
-            <TabsTrigger value="profile" className="gap-2"><User className="h-4 w-4" /> Perfil</TabsTrigger>
-            {!is_author && <TabsTrigger value="author" className="gap-2"><PenTool className="h-4 w-4" /> Ser Autor</TabsTrigger>}
-            {is_author && <TabsTrigger value="submit_book" className="gap-2"><Send className="h-4 w-4" /> Enviar Livro</TabsTrigger>}
-            {is_admin && <TabsTrigger value="admin" className="gap-2"><Users className="h-4 w-4" /> Admin</TabsTrigger>}
+          <TabsList className="bg-secondary/50 p-1 flex-wrap h-auto gap-1">
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="gap-2">
+                {t.icon} {t.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* PROFILE TAB */}
@@ -137,9 +166,9 @@ const ProfilePage: React.FC = () => {
                 <CardTitle className="text-xl">Informações Pessoais</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Avatar */}
+                {/* Avatar with file input */}
                 <div className="flex items-center gap-4">
-                  <div className="relative h-20 w-20 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-border">
+                  <div className="relative h-20 w-20 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-border">
                     {avatar_url ? (
                       <img src={avatar_url} alt="Avatar" className="h-full w-full object-cover" />
                     ) : (
@@ -147,11 +176,12 @@ const ProfilePage: React.FC = () => {
                     )}
                     <label className="absolute inset-0 flex items-center justify-center bg-foreground/30 opacity-0 hover:opacity-100 cursor-pointer transition-opacity rounded-full">
                       <Camera className="h-5 w-5 text-primary-foreground" />
+                      <input type="file" accept="image/*" className="hidden" onChange={handle_avatar_file} />
                     </label>
                   </div>
                   <div className="flex-1">
-                    <label className="text-sm font-medium text-foreground">URL da Foto</label>
-                    <Input value={avatar_url} onChange={(e) => set_avatar_url(e.target.value)} placeholder="https://..." className="mt-1" />
+                    <p className="text-sm font-medium text-foreground">Foto de Perfil</p>
+                    <p className="text-xs text-muted-foreground">Clique na imagem para trocar</p>
                   </div>
                 </div>
 
@@ -314,217 +344,209 @@ const ProfilePage: React.FC = () => {
             </TabsContent>
           )}
 
-          {/* ADMIN TAB */}
+          {/* ADMIN: AUTHOR REQUESTS */}
           {is_admin && (
-            <TabsContent value="admin">
-              <div className="space-y-6">
-                <Tabs defaultValue="admin_books">
-                  <TabsList className="bg-secondary/50 p-1">
-                    <TabsTrigger value="admin_books" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Livros</TabsTrigger>
-                    <TabsTrigger value="admin_users" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Usuários</TabsTrigger>
-                    <TabsTrigger value="admin_requests" className="gap-1.5"><PenTool className="h-3.5 w-3.5" /> Solicitações</TabsTrigger>
-                    <TabsTrigger value="admin_submissions" className="gap-1.5"><Send className="h-3.5 w-3.5" /> Aprovações</TabsTrigger>
-                  </TabsList>
-
-                  {/* ADMIN BOOKS */}
-                  <TabsContent value="admin_books">
-                    <Card className="border-border">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <CardTitle className="text-lg">Livros Cadastrados</CardTitle>
-                          <div className="relative w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              value={books_search}
-                              onChange={(e) => { set_books_search(e.target.value); set_books_page(1); }}
-                              placeholder="Pesquisar livros..."
-                              className="pl-9"
-                            />
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {paginated_books.map((b) => (
-                            <div key={b.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                              <img src={b.cover_url} alt={b.title} className="h-12 w-9 rounded object-cover" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">{b.title}</p>
-                                <p className="text-xs text-muted-foreground">{b.author} · {b.category}</p>
-                              </div>
-                              <Badge variant="outline">R$ {b.price.toFixed(2)}</Badge>
+            <TabsContent value="admin_requests">
+              <Card className="border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <CardTitle className="text-lg">Solicitações de Autor</CardTitle>
+                    <div className="flex gap-2">
+                      <Button variant={requests_filter === "pending" ? "default" : "outline"} size="sm" onClick={() => set_requests_filter("pending")}>Pendentes</Button>
+                      <Button variant={requests_filter === "all" ? "default" : "outline"} size="sm" onClick={() => set_requests_filter("all")}>Todas</Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {filtered_requests.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação encontrada.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {filtered_requests.map((r) => (
+                        <div key={r.id} className="rounded-lg border border-border p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{r.user_name}</p>
+                              <p className="text-xs text-muted-foreground">{r.user_email} · {r.created_at}</p>
                             </div>
-                          ))}
-                        </div>
-                        {books_total_pages > 1 && (
-                          <div className="flex items-center justify-center gap-2 mt-4">
-                            <Button variant="outline" size="sm" onClick={() => set_books_page((p) => Math.max(1, p - 1))} disabled={books_page === 1}>
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm text-muted-foreground">{books_page} / {books_total_pages}</span>
-                            <Button variant="outline" size="sm" onClick={() => set_books_page((p) => Math.min(books_total_pages, p + 1))} disabled={books_page === books_total_pages}>
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
+                            {status_badge(r.status)}
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  {/* ADMIN USERS */}
-                  <TabsContent value="admin_users">
-                    <Card className="border-border">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <CardTitle className="text-lg">Usuários</CardTitle>
-                          <div className="relative w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              value={users_search}
-                              onChange={(e) => { set_users_search(e.target.value); set_users_page(1); }}
-                              placeholder="Pesquisar usuários..."
-                              className="pl-9"
-                            />
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          {paginated_users.map((u) => (
-                            <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                              <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
-                                  <User className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-foreground">{u.name}</p>
-                                  <p className="text-xs text-muted-foreground">{u.email} · <span className="capitalize">{u.role}</span></p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant={u.is_active ? "default" : "secondary"} className="text-xs">
-                                  {u.is_active ? "Ativo" : "Inativo"}
-                                </Badge>
-                                <Switch checked={u.is_active} onCheckedChange={() => toggle_user_active(u.id)} />
-                              </div>
+                          <p className="text-sm text-muted-foreground">{r.reason}</p>
+                          {r.status === "pending" && (
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => update_author_request(r.id, "approved")} className="gap-1">
+                                <CheckCircle className="h-3.5 w-3.5" /> Aprovar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => update_author_request(r.id, "rejected")} className="gap-1">
+                                <XCircle className="h-3.5 w-3.5" /> Recusar
+                              </Button>
                             </div>
-                          ))}
+                          )}
                         </div>
-                        {users_total_pages > 1 && (
-                          <div className="flex items-center justify-center gap-2 mt-4">
-                            <Button variant="outline" size="sm" onClick={() => set_users_page((p) => Math.max(1, p - 1))} disabled={users_page === 1}>
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm text-muted-foreground">{users_page} / {users_total_pages}</span>
-                            <Button variant="outline" size="sm" onClick={() => set_users_page((p) => Math.min(users_total_pages, p + 1))} disabled={users_page === users_total_pages}>
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
-                  {/* ADMIN AUTHOR REQUESTS */}
-                  <TabsContent value="admin_requests">
-                    <Card className="border-border">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <CardTitle className="text-lg">Solicitações de Autor</CardTitle>
-                          <div className="flex gap-2">
-                            <Button variant={requests_filter === "pending" ? "default" : "outline"} size="sm" onClick={() => set_requests_filter("pending")}>Pendentes</Button>
-                            <Button variant={requests_filter === "all" ? "default" : "outline"} size="sm" onClick={() => set_requests_filter("all")}>Todas</Button>
+          {/* ADMIN: USERS */}
+          {is_admin && (
+            <TabsContent value="admin_users">
+              <Card className="border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <CardTitle className="text-lg">Usuários Cadastrados</CardTitle>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={users_search}
+                        onChange={(e) => { set_users_search(e.target.value); set_users_page(1); }}
+                        placeholder="Pesquisar usuários..."
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {paginated_users.map((u) => (
+                      <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{u.name}</p>
+                            <p className="text-xs text-muted-foreground">{u.email} · <span className="capitalize">{u.role}</span></p>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        {filtered_requests.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-8">Nenhuma solicitação encontrada.</p>
-                        ) : (
-                          <div className="space-y-3">
-                            {filtered_requests.map((r) => (
-                              <div key={r.id} className="rounded-lg border border-border p-4 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium text-foreground">{r.user_name}</p>
-                                    <p className="text-xs text-muted-foreground">{r.user_email} · {r.created_at}</p>
-                                  </div>
-                                  {status_badge(r.status)}
-                                </div>
-                                <p className="text-sm text-muted-foreground">{r.reason}</p>
-                                {r.status === "pending" && (
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => update_author_request(r.id, "approved")} className="gap-1">
-                                      <CheckCircle className="h-3.5 w-3.5" /> Aprovar
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => update_author_request(r.id, "rejected")} className="gap-1">
-                                      <XCircle className="h-3.5 w-3.5" /> Recusar
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={u.is_active ? "default" : "secondary"} className="text-xs">
+                            {u.is_active ? "Ativo" : "Inativo"}
+                          </Badge>
+                          <Switch checked={u.is_active} onCheckedChange={() => toggle_user_active(u.id)} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {users_total_pages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      <Button variant="outline" size="sm" onClick={() => set_users_page((p) => Math.max(1, p - 1))} disabled={users_page === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground">{users_page} / {users_total_pages}</span>
+                      <Button variant="outline" size="sm" onClick={() => set_users_page((p) => Math.min(users_total_pages, p + 1))} disabled={users_page === users_total_pages}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
-                  {/* ADMIN BOOK SUBMISSIONS */}
-                  <TabsContent value="admin_submissions">
-                    <Card className="border-border">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <CardTitle className="text-lg">Livros para Aprovação</CardTitle>
-                          <div className="relative w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              value={submissions_search}
-                              onChange={(e) => set_submissions_search(e.target.value)}
-                              placeholder="Pesquisar..."
-                              className="pl-9"
-                            />
-                          </div>
+          {/* ADMIN: BOOKS */}
+          {is_admin && (
+            <TabsContent value="admin_books">
+              <Card className="border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <CardTitle className="text-lg">Todos os Livros</CardTitle>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={books_search}
+                        onChange={(e) => { set_books_search(e.target.value); set_books_page(1); }}
+                        placeholder="Pesquisar livros..."
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {paginated_books.map((b) => (
+                      <div key={b.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                        <img src={b.cover_url} alt={b.title} className="h-12 w-9 rounded object-cover" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{b.title}</p>
+                          <p className="text-xs text-muted-foreground">{b.author} · {b.category}</p>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        {filtered_submissions.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-8">Nenhum envio encontrado.</p>
-                        ) : (
-                          <div className="space-y-3">
-                            {filtered_submissions.map((s) => (
-                              <div key={s.id} className="rounded-lg border border-border p-4 space-y-3">
-                                <div className="flex items-start gap-3">
-                                  <img src={s.cover_url} alt={s.title} className="h-16 w-12 rounded object-cover" />
-                                  <div className="flex-1">
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-sm font-medium text-foreground">{s.title}</p>
-                                      {status_badge(s.status)}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">{s.author_name} · {s.category} · R$ {s.price.toFixed(2)} · {s.created_at}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">{s.synopsis.substring(0, 120)}...</p>
-                                    <p className="text-xs text-muted-foreground">{s.pages.length} páginas</p>
-                                  </div>
-                                </div>
-                                {s.status === "pending" && (
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => update_book_submission(s.id, "approved")} className="gap-1">
-                                      <CheckCircle className="h-3.5 w-3.5" /> Aprovar
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => update_book_submission(s.id, "rejected")} className="gap-1">
-                                      <XCircle className="h-3.5 w-3.5" /> Rejeitar
-                                    </Button>
-                                  </div>
-                                )}
+                        <Badge variant="outline">R$ {b.price.toFixed(2)}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                  {books_total_pages > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      <Button variant="outline" size="sm" onClick={() => set_books_page((p) => Math.max(1, p - 1))} disabled={books_page === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground">{books_page} / {books_total_pages}</span>
+                      <Button variant="outline" size="sm" onClick={() => set_books_page((p) => Math.min(books_total_pages, p + 1))} disabled={books_page === books_total_pages}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* ADMIN: BOOK SUBMISSIONS / APPROVALS */}
+          {is_admin && (
+            <TabsContent value="admin_submissions">
+              <Card className="border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <CardTitle className="text-lg">Livros para Aprovação</CardTitle>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={submissions_search}
+                        onChange={(e) => set_submissions_search(e.target.value)}
+                        placeholder="Pesquisar..."
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {filtered_submissions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Nenhum envio encontrado.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {filtered_submissions.map((s) => (
+                        <div key={s.id} className="rounded-lg border border-border p-4 space-y-3">
+                          <div className="flex items-start gap-3">
+                            <img src={s.cover_url} alt={s.title} className="h-16 w-12 rounded object-cover" />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium text-foreground">{s.title}</p>
+                                {status_badge(s.status)}
                               </div>
-                            ))}
+                              <p className="text-xs text-muted-foreground">{s.author_name} · {s.category} · R$ {s.price.toFixed(2)} · {s.created_at}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{s.synopsis.substring(0, 120)}...</p>
+                              <p className="text-xs text-muted-foreground">{s.pages.length} páginas</p>
+                            </div>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
-              </div>
+                          {s.status === "pending" && (
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => update_book_submission(s.id, "approved")} className="gap-1">
+                                <CheckCircle className="h-3.5 w-3.5" /> Aprovar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => update_book_submission(s.id, "rejected")} className="gap-1">
+                                <XCircle className="h-3.5 w-3.5" /> Rejeitar
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           )}
         </Tabs>

@@ -1,11 +1,7 @@
-import React, { useRef, useState } from "react";
-
+import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
 import HTMLFlipBook from "react-pageflip";
-
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
-
 import { mock_books } from "@/data/mock_books";
 
 interface PageProps {
@@ -24,7 +20,6 @@ const Page = React.forwardRef<HTMLDivElement, PageProps>(
         <div className="flex-1 overflow-y-auto font-body text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
           {children}
         </div>
-
         <div className="mt-4 text-center text-xs text-muted-foreground">
           — {number} —
         </div>
@@ -37,12 +32,16 @@ Page.displayName = "Page";
 
 const ReaderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-
   const navigate = useNavigate();
-
   const book_ref = useRef<any>(null);
-
   const [current_page, set_current_page] = useState(0);
+  const [is_wide, set_is_wide] = useState(window.innerWidth >= 900);
+
+  useEffect(() => {
+    const handle = () => set_is_wide(window.innerWidth >= 900);
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, []);
 
   const book = mock_books.find((b) => b.id === id);
 
@@ -85,11 +84,9 @@ const ReaderPage: React.FC = () => {
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </button>
-
         <h2 className="font-display text-sm font-medium text-foreground/80">
           {book.title}
         </h2>
-
         <span className="text-xs text-muted-foreground">
           {current_page + 1} / {total_pages}
         </span>
@@ -101,13 +98,13 @@ const ReaderPage: React.FC = () => {
           {/* @ts-ignore - react-pageflip type issues */}
           <HTMLFlipBook
             ref={book_ref}
-            width={400}
-            height={550}
+            width={is_wide ? 420 : 340}
+            height={is_wide ? 560 : 500}
             size="stretch"
             minWidth={280}
-            maxWidth={500}
+            maxWidth={is_wide ? 500 : 400}
             minHeight={400}
-            maxHeight={600}
+            maxHeight={620}
             showCover={true}
             mobileScrollSupport={true}
             onFlip={on_flip}
@@ -115,11 +112,11 @@ const ReaderPage: React.FC = () => {
             style={{}}
             startPage={0}
             drawShadow={true}
-            flippingTime={600}
-            usePortrait={true}
+            flippingTime={1000}
+            usePortrait={!is_wide}
             startZIndex={0}
             autoSize={true}
-            maxShadowOpacity={0.5}
+            maxShadowOpacity={0.4}
             showPageCorners={true}
             disableFlipByClick={false}
             useMouseEvents={true}
@@ -133,7 +130,6 @@ const ReaderPage: React.FC = () => {
                     <h2 className="font-display text-2xl font-bold text-foreground">
                       {book.title}
                     </h2>
-
                     <p className="mt-4 text-muted-foreground">por {book.author}</p>
                   </div>
                 ) : (
@@ -155,7 +151,6 @@ const ReaderPage: React.FC = () => {
           <ChevronLeft className="h-4 w-4" />
           Anterior
         </button>
-
         <button
           onClick={handle_next}
           disabled={current_page >= total_pages - 1}
