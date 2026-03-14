@@ -34,7 +34,7 @@ const ProfilePage: React.FC = () => {
   // Book submission
   const [book_title, set_book_title] = useState("");
   const [book_synopsis, set_book_synopsis] = useState("");
-  const [book_category, set_book_category] = useState(CATEGORIES[0]);
+  const [book_category, set_book_category] = useState<string>(CATEGORIES[0]);
   const [book_price, set_book_price] = useState("");
   const [book_cover, set_book_cover] = useState("");
   const [book_pages_text, set_book_pages_text] = useState("");
